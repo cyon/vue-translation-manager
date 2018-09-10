@@ -1,6 +1,7 @@
 module.exports = {
   title: 'vue-translation-manager',
   description: 'Interactively translate your Vue components',
+  base: '/vue-translation-manager/',
   themeConfig: {
     nav: [
       { text: 'Home', link: '/' },
