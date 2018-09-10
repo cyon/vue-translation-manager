@@ -18,7 +18,10 @@
   },
   "keywords": [
     "i18n",
-    "vue"
+    "vue",
+    "translation",
+    "translating",
+    "sfc"
   ],
   "author": "Max Gfeller <mg@cyon.ch>",
   "license": "ISC",
