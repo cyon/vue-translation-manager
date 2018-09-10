@@ -9,6 +9,7 @@
   "scripts": {
     "docs:dev": "vuepress dev docs",
     "docs:build": "vuepress build docs",
+    "docs:deploy": "./deploy.sh",
     "test": "standard && tape test/test-*.js | tap-spec"
   },
   "repository": {
