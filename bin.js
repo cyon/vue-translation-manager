@@ -47,6 +47,30 @@ require('yargs') // eslint-disable-line
 
         process.exit(0)
       }
+
+      if (choice.mode === 'ask') {
+        let choices = unusedTranslations.map((translation) => {
+          return {
+            type: 'list',
+            name: translation.replace(/\./g, '/'),
+            message: `Do you want to delete "${translation}"?`,
+            choices: [
+              { name: 'Yes', value: true },
+              { name: 'No', value: false }
+            ]
+          }
+        })
+
+        let deletions = []
+        prompt(choices).then(async (answers) => {
+          Object.keys(answers).map((key) => {
+            if (answers[key]) deletions.push(key.replace(/\//g, '.'))
+          })
+
+          await manager.deleteTranslations(deletions)
+          console.log('🎉 Deleted selected translations')
+        })
+      }
     })
   })
   .command('add [key]', 'Add a new translation to the resource file(s)', (yargs) => {
