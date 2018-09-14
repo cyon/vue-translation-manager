@@ -138,7 +138,7 @@ require('yargs') // eslint-disable-line
 function launchInteractiveTranslationPrompt (askKey) {
   var globPattern = `${manager.getSrcPath()}/**/*.vue`
   var files = glob.sync(globPattern, null)
-  var untranslatedComponents = files.filter((file) => containsUntranslatedStrings(file)).map((file) => path.relative(__dirname, file))
+  var untranslatedComponents = files.filter((file) => containsUntranslatedStrings(file)).map((file) => path.relative(process.cwd(), file))
   if (!untranslatedComponents.length) {
     console.log(chalk.green('All components translated'))
     process.exit(0)
@@ -151,7 +151,7 @@ function launchInteractiveTranslationPrompt (askKey) {
     message: 'Choose the next file to translate',
     choices: untranslatedComponents
   }]).then(async (answers) => {
-    var filePath = answers.file
+    var filePath = path.resolve(answers.file)
     var strings = manager.getStringsForComponent(filePath)
 
     var questions = []
