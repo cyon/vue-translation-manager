@@ -1,6 +1,6 @@
 {
   "name": "vue-translation-manager",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Translate strings in your app in an interactive way",
   "main": "index.js",
   "bin": {
