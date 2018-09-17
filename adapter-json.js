@@ -51,7 +51,7 @@ JSONAdapter.prototype._setLanguages = function (languages) {
       let translationFilePath = path.join(this.path, `${lang}.json`)
       if (!fs.existsSync(translationFilePath)) throw new Error(`Translation file not found: ${translationFilePath}`)
 
-      this.translationFiles[lang] = translationFilePath
+      this.translationFiles[lang] = `${lang}.json`
     })
   }
 }
