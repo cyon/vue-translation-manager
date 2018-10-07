@@ -165,7 +165,8 @@ function launchInteractiveTranslationPrompt (askKey) {
         key: key,
         where: str.where,
         indexInFile: str.indexInFile,
-        stringLength: str.stringLength
+        stringLength: str.stringLength,
+        expressions: str.expressions
       })
 
       if (askKey) {
@@ -179,7 +180,7 @@ function launchInteractiveTranslationPrompt (askKey) {
       manager.getLanguages().map((lang) => {
         questions.push({
           type: 'input',
-          message: `[${lang}] Translation for "${str.string}"`,
+          message: `[${lang}] Translation for "${str.originalString}"`,
           name: `${replaceAll(key, '.', '/')}.${lang}`,
           default: str.string
         })

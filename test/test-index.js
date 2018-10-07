@@ -84,7 +84,7 @@ test('getStringsForComponent', function (t) {
   var pathToFile = path.join(__dirname, 'data/test-1/src/components/Test.vue')
   var strings = m.getStringsForComponent(pathToFile)
   t.ok(strings, 'there is a result')
-  t.equal(strings.length, 3, 'there are three strings in the file')
+  t.equal(strings.length, 5, 'there are five strings in the file')
   t.equal(strings[0].indexInTemplate, 17, 'indexInTemplate is correct')
   t.equal(strings[0].indexInFile, 27, 'indexInFile is correct')
   t.ok(strings[0].string, 'string is given')
