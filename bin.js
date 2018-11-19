@@ -157,9 +157,12 @@ function launchInteractiveTranslationPrompt (askKey) {
     var questions = []
     var replacements = []
 
+    var usedKeys = []
+
     for (var i = 0; i < strings.length; i++) {
       let str = strings[i]
-      var key = await manager.getSuggestedKey(filePath, str.string)
+      var key = await manager.getSuggestedKey(filePath, str.string, usedKeys)
+      usedKeys.push(key)
 
       replacements.push({
         key: key,
