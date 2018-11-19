@@ -138,9 +138,11 @@ TranslationManager.prototype.replaceStringsInComponent = function (pathToCompone
 /**
  * Generate a suggested key (using dots) based on the given path
  * @param {string} pathToFile Path to the file
+ * @param {string} text The text to be translated
+ * @param {array} usedKeys Optional, array of keys that have already been used
  * @returns {string}
  */
-TranslationManager.prototype.getSuggestedKey = async function (pathToFile, text) {
+TranslationManager.prototype.getSuggestedKey = async function (pathToFile, text, usedKeys) {
   const ignoreWords = ['src', 'components', 'component', 'source', 'test']
 
   var p = path.relative(this.rootPath, pathToFile)
@@ -155,16 +157,21 @@ TranslationManager.prototype.getSuggestedKey = async function (pathToFile, text)
 
   let word = camelCase(words.join(' ').replace(/[^a-zA-Z ]/g, ''))
   if (!word) word = Math.floor(Math.random() * 10000)
-  let proposedKey = await this.getCompatibleKey(`${prefix}.${word}`)
+  let proposedKey = await this.getCompatibleKey(`${prefix}.${word}`, usedKeys)
 
   return proposedKey
 }
 
-TranslationManager.prototype.getCompatibleKey = async function (suggestedKey) {
+TranslationManager.prototype.getCompatibleKey = async function (suggestedKey, usedKeys) {
   let keys = await this.adapter.getAllKeys()
   keys = Object.keys(keys).reduce((map, lang) => {
     return map.concat(keys[lang])
   }, [])
+
+  if (usedKeys && typeof Array.isArray(usedKeys)) {
+    keys = keys.concat(usedKeys)
+  }
+
   let twitchIt = () => {
     return keys.some((key) => {
       let existingCheck = new RegExp('^(' + suggestedKey.replace(/\./g, '\\.') + ')(\\..*)?$')
