@@ -72,6 +72,30 @@ test('getSuggestedKey', async function (t) {
   t.end()
 })
 
+test('getSuggestedKey with list of used keys', async function (t) {
+  let messagesFile = path.join(__dirname, 'tmp/messages.json')
+  fs.writeFileSync(path.join(__dirname, 'tmp/messages.json'), '{}')
+  var rootPath = path.join(__dirname, 'data/test-1')
+  var m = new Manager({
+    languages: ['en'],
+    path: '/tmp',
+    adapter: new JSONAdapter({ path: messagesFile }),
+    root: rootPath
+  })
+  var pathToFile = path.join(__dirname, 'data/test-1/src/components/Test.vue')
+  var key = await m.getSuggestedKey(pathToFile, 'Create Group and a lot of text that stays the same One')
+  t.equal(key, 'test.createGroupAnd', 'key is correct')
+
+  var keyTwo = await m.getSuggestedKey(pathToFile, 'Create Group and a lot of text that stays the same Two')
+  t.equal(keyTwo, 'test.createGroupAnd', 'key is correct')
+
+  var keyThree = await m.getSuggestedKey(pathToFile, 'Create Group and a lot of text that stays the same Three', ['test.createGroupAnd'])
+  t.equal(keyThree, 'test.createGroupAnd1', 'key is correct')
+
+  cleanupTmp()
+  t.end()
+})
+
 test('getStringsForComponent', function (t) {
   let messagesFile = path.join(__dirname, 'tmp/messages.json')
   fs.writeFileSync(path.join(__dirname, 'tmp/messages.json'), '{}')
