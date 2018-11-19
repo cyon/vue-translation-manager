@@ -86,7 +86,7 @@ TranslationManager.prototype.getStringsForComponent = function (pathToComponent)
     }
   }).filter(Boolean)
 
-  var attributeResults = execall(/\s([a-z]*-)?(title|label|text|caption|placeholder)="(.*)"/gm, template)
+  var attributeResults = execall(/\s([a-z]*-)?(title|label|text|caption|placeholder)="([^"]*)"/gm, template)
 
   var attributeMatches = attributeResults.map((match) => {
     if (!match.sub[2] || match.sub[2].trim() === '') return
