@@ -117,6 +117,25 @@ test('getStringsForComponent', function (t) {
   t.end()
 })
 
+test('getStringsForComponent with special characters', function (t) {
+  let messagesFile = path.join(__dirname, 'tmp/messages.json')
+  fs.writeFileSync(path.join(__dirname, 'tmp/messages.json'), '{}')
+  var m = new Manager({
+    languages: ['en'],
+    path: '/tmp',
+    adapter: new JSONAdapter({ path: messagesFile })
+  })
+
+  var pathToFile = path.join(__dirname, 'data/test-3/SimpleComponent.vue')
+  var strings = m.getStringsForComponent(pathToFile)
+  t.ok(strings, 'there is a result')
+  t.equal(strings.length, 1, 'there should be one string')
+  t.equal(strings[0].string, 'My Title', 'should only match "My Title"')
+
+  cleanupTmp()
+  t.end()
+})
+
 test('getStringsForComponent and replaceStringInComponent', function (t) {
   var pathToFile = path.join(__dirname, 'data/test-1/src/components/Test.vue')
   var tmpPath = path.join(__dirname, 'tmp/Test.vue')
