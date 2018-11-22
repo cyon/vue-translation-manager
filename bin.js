@@ -168,7 +168,8 @@ function launchInteractiveTranslationPrompt (askKey) {
         key: key,
         where: str.where,
         indexInFile: str.indexInFile,
-        stringLength: str.stringLength
+        stringLength: str.stringLength,
+        expressions: str.expressions
       })
 
       if (askKey) {
@@ -179,12 +180,34 @@ function launchInteractiveTranslationPrompt (askKey) {
           default: key
         })
       }
+
+      let textForDisplay = ''
+      let defaultString = ''
+
+      if (str.expressions) {
+        let i = 1
+        let lastIndex = 0
+
+        str.expressions.map((expression) => {
+          textForDisplay += str.originalString.substring(lastIndex, expression.indexStart)
+          defaultString += str.originalString.substring(lastIndex, expression.indexStart)
+          lastIndex = expression.indexEnd + 2
+          textForDisplay += `${chalk.red(`{{${expression.expr}}}`)}${chalk.blue(`{${i}}`)}`
+          defaultString += `{${i}}`
+
+          i++
+        })
+
+        textForDisplay += str.originalString.substring(lastIndex)
+        defaultString += str.originalString.substring(lastIndex)
+      }
+
       manager.getLanguages().map((lang) => {
         questions.push({
           type: 'input',
-          message: `[${lang}] Translation for "${str.string}"`,
+          message: `[${lang}] Translation for "${textForDisplay}"`,
           name: `${replaceAll(key, '.', '/')}.${lang}`,
-          default: str.string
+          default: defaultString
         })
       })
     }

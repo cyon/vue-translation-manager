@@ -33,6 +33,23 @@ string to translate. If you are content with the default string then just hit `e
 also enter a complete new key, separated by dots, or just enter a single word. Then it will
 just replace the last part of the suggested key.
 
+This tool will also find translations separated with interpolated strings. It will convert these
+dynamic data to be passed to translation as parameters. Interpolated strings will be available 
+in translation under `param[$i]` variable.
+
+Here is an example:
+``` vue
+<p>Hello {{ user.name }}</p>
+```
+
+That will result in following transformation:
+``` vue
+<p>{{ $t('hello', { param0: user.name }) }}
+```
+
+You can reference this variable in translation like this: `'Hello {param0}'`. Feel free to 
+rename these variables later for more readable code.
+
 ## `clean`
 
 This command looks at all the translations in your configured translation files and searches

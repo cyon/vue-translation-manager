@@ -72,16 +72,62 @@ TranslationManager.prototype.getStringsForComponent = function (pathToComponent)
   var templateOffset = templateResult.offset
   var template = templateResult.template
 
-  var matches = execall(/>([^<>{}]*)</gm, template)
+  var matches = execall(/>([^<>]*)</gm, template)
+
+  function extractTemplateExpression (text) {
+    const indexOfOpening = text.indexOf('{{')
+    const indexOfClosing = text.indexOf('}}')
+    if (indexOfClosing === -1 || indexOfOpening === -1) {
+      return {
+        expression: null,
+        text: text
+      }
+    }
+    return {
+      index: indexOfOpening,
+      indexClosing: indexOfClosing,
+      expression: text.substring(indexOfOpening + 2, indexOfClosing).trim(),
+      text: '' + text.substring(0, indexOfOpening) + text.substring(indexOfClosing + 2)
+    }
+  }
+
+  function checkTemplateExpression (text) {
+    let currText = text
+    let expression = true
+    let expressions = []
+    let currentOffset = 0
+
+    while (expression !== null) {
+      let result = extractTemplateExpression(currText)
+      currText = result.text
+      expression = result.expression
+      if (expression !== null) {
+        expressions.push({
+          expr: expression,
+          indexStart: currentOffset + result.index,
+          indexEnd: currentOffset + result.indexClosing
+        })
+        currentOffset += (result.indexClosing - result.index) + 2
+      }
+    }
+    return {
+      staticText: currText.trim(),
+      hasStaticText: currText.trim().length > 0,
+      expressions
+    }
+  }
 
   var textNodeMatches = matches.map((match) => {
-    if (match.sub[0].trim() === '' || match.sub[0].trim().length < 3) return
-
+    let expressionsInfo = checkTemplateExpression(match.sub[0])
+    if (!expressionsInfo.hasStaticText) return
+    if (expressionsInfo.staticText.length < 3) return
     return {
       indexInTemplate: match.index + 1,
       indexInFile: templateOffset + match.index + 1,
-      string: match.sub[0].trim(),
+      originalString: match.sub[0],
+      string: expressionsInfo.staticText,
       stringLength: match.sub[0].length,
+      expressions: expressionsInfo.expressions,
       where: 'textNode'
     }
   }).filter(Boolean)
@@ -94,8 +140,10 @@ TranslationManager.prototype.getStringsForComponent = function (pathToComponent)
     return {
       indexInTemplate: match.index + match.match.indexOf(match.sub[2]),
       indexInFile: templateOffset + match.index + match.match.indexOf(match.sub[2]),
+      originalString: match.sub[2].trim(),
       string: match.sub[2].trim(),
       stringLength: match.sub[2].length,
+      expressions: [],
       where: 'attribute'
     }
   }).filter(Boolean)
@@ -115,10 +163,16 @@ TranslationManager.prototype.getStringsForComponent = function (pathToComponent)
 TranslationManager.prototype.replaceStringsInComponent = function (pathToComponent, strings) {
   var fileContents = fs.readFileSync(pathToComponent, { encoding: 'utf8' })
   var contentsAfter = fileContents
-
   var offset = 0
   strings.map((str) => {
     var translateFn = `{{ $t('${str.key}') }}`
+    if (str.expressions.length > 0) {
+      var params = []
+      for (var i = 0; i < str.expressions.length; i++) {
+        params.push(`'${i + 1}': ${str.expressions[i].expr}`)
+      }
+      translateFn = `{{ $t('${str.key}', { ${params.join(', ')} }) }}`
+    }
     var firstPart = contentsAfter.substring(0, offset + str.indexInFile)
     var secondPart = contentsAfter.substring(offset + str.indexInFile + str.stringLength)
 
@@ -254,6 +308,7 @@ TranslationManager.prototype.getTranslationUsages = function (translationKey) {
  */
 function camelCase (text) {
   return text
+    .trim()
     .split(' ')
     .map((word) => word.toLowerCase())
     .map((word, i) => (i === 0 ? word : word[0].toUpperCase() + word.substring(1)))

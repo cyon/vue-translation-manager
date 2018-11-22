@@ -14,8 +14,3 @@ test('Simple checks', function (t) {
   cleanupTmp()
   t.end()
 })
-
-test('With arguments from the cli', function (t) {
-  cleanupTmp()
-  t.end()
-})
