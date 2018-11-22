@@ -84,6 +84,8 @@ TranslationManager.prototype.getStringsForComponent = function (pathToComponent)
       }
     }
     return {
+      index: indexOfOpening,
+      indexClosing: indexOfClosing,
       expression: text.substring(indexOfOpening + 2, indexOfClosing).trim(),
       text: '' + text.substring(0, indexOfOpening) + text.substring(indexOfClosing + 2)
     }
@@ -92,13 +94,20 @@ TranslationManager.prototype.getStringsForComponent = function (pathToComponent)
   function checkTemplateExpression (text) {
     let currText = text
     let expression = true
-    const expressions = []
+    let expressions = []
+    let currentOffset = 0
+
     while (expression !== null) {
-      const result = extractTemplateExpression(currText)
+      let result = extractTemplateExpression(currText)
       currText = result.text
       expression = result.expression
       if (expression !== null) {
-        expressions.push(expression)
+        expressions.push({
+          expr: expression,
+          indexStart: currentOffset + result.index,
+          indexEnd: currentOffset + result.indexClosing
+        })
+        currentOffset += (result.indexClosing - result.index) + 2
       }
     }
     return {
@@ -109,7 +118,7 @@ TranslationManager.prototype.getStringsForComponent = function (pathToComponent)
   }
 
   var textNodeMatches = matches.map((match) => {
-    const expressionsInfo = checkTemplateExpression(match.sub[0])
+    let expressionsInfo = checkTemplateExpression(match.sub[0])
     if (!expressionsInfo.hasStaticText) return
     if (expressionsInfo.staticText.length < 3) return
     return {
@@ -160,7 +169,7 @@ TranslationManager.prototype.replaceStringsInComponent = function (pathToCompone
     if (str.expressions.length > 0) {
       var params = []
       for (var i = 0; i < str.expressions.length; i++) {
-        params.push(`param${i}: ${str.expressions[i]}`)
+        params.push(`'${i + 1}': ${str.expressions[i].expr}`)
       }
       translateFn = `{{ $t('${str.key}', { ${params.join(', ')} }) }}`
     }
@@ -292,6 +301,7 @@ TranslationManager.prototype.getTranslationUsages = function (translationKey) {
  */
 function camelCase (text) {
   return text
+    .trim()
     .split(' ')
     .map((word) => word.toLowerCase())
     .map((word, i) => (i === 0 ? word : word[0].toUpperCase() + word.substring(1)))
