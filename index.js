@@ -301,6 +301,28 @@ TranslationManager.prototype.getTranslationUsages = function (translationKey) {
   return usages
 }
 
+TranslationManager.prototype.validate = async function () {
+  let missingKeys = {}
+  let allKeys = []
+  let keysInLanguages = await this.adapter.getAllKeys()
+  Object.keys(keysInLanguages).map((lang) => {
+    allKeys = allKeys.concat(keysInLanguages[lang])
+  })
+  allKeys = uniq(allKeys)
+
+  this.languages.forEach((lang) => {
+    for (let key of allKeys) {
+      if (!keysInLanguages[lang].includes(key)) {
+        if (!missingKeys.hasOwnProperty(lang)) {
+          missingKeys[lang] = []
+        }
+        missingKeys[lang].push(key)
+      }
+    }
+  })
+  return missingKeys
+}
+
 /**
  * camelCase any string
  * @param {string} text The string to be camelCased
