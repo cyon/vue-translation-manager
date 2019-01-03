@@ -192,3 +192,24 @@ test('addTranslatedString', async function (t) {
   cleanupTmp()
   t.end()
 })
+
+test('keys exist in all languages', async function (t) {
+  var missingTranslations = {}
+  var pathToTranslations = path.join(__dirname, 'tmp/translations.json')
+  fs.writeFileSync(pathToTranslations, '{}')
+  var m = new Manager({
+    languages: ['en', 'de'],
+    adapter: new JSONAdapter({ path: pathToTranslations })
+  })
+  await m.addTranslatedString('foo.bar.title', { en: 'Hello World' })
+  missingTranslations = await m.validate()
+  t.ok(missingTranslations, 'there are translations')
+  t.equals(missingTranslations.de[0], 'foo.bar.title', 'german translation is missing')
+
+  await m.addTranslatedString('foo.bar.title', { de: 'Hallo Welt' })
+  missingTranslations = await m.validate()
+  t.equals(Object.keys(missingTranslations).length, 0, 'no translation is missing')
+
+  cleanupTmp()
+  t.end()
+})
