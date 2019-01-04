@@ -133,21 +133,21 @@ require('yargs') // eslint-disable-line
     await manager.deleteTranslations(argv.key)
     console.log(chalk.green('Successfully deleted translation 💥'))
   })
-  .command('validate', 'checks if all languages have a translations for all known keys', (yargs) => {
+  .command('validate', 'Checks if translated messages are available in all configured languages', (yargs) => {
 
   }, async (argv) => {
     manager = setUpManager(argv)
-    const missingKeys = await manager.validate()
+    let missingKeys = await manager.validate()
     if (Object.keys(missingKeys).length > 0) {
-      console.log(`❗️️ The messagefile is incomplete.\n\nThe following ${chalk.red('keys')} are missing in:\n`)
+      console.log(`❗️️ Messages incomplete.\n\nThe following keys are missing:`)
       Object.keys(missingKeys).map((index) => {
         const keys = missingKeys[index]
         const count = keys.length
-        console.log(`Language: ${chalk.red.bold(index)}\nKeys missing: ${chalk.red.bold(count)}\n  ${chalk.red(keys.join('\n  '))}`)
+        console.log(`\nLanguage: ${chalk.red.bold(index)}\nKeys missing: ${chalk.red.bold(count)}:\n  ${chalk.red(keys.join('\n  '))}`)
       })
       process.exit(1)
     }
-    console.log(chalk.green('Everything okay'))
+    console.log(chalk.green('Looking good! 👌🏻'))
   })
   .argv
 
