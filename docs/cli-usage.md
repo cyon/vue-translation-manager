@@ -11,6 +11,8 @@ Commands:
                                         file(s)
   vue-translation-manager edit [key]    Edit an existing translation
   vue-translation-manager delete [key]  Delete an existing translation
+  vue-translation-manager validate      Checks if translated messages are available in all
+                       configured languages
 
 Options:
   --help     Show help                                                 [boolean]
@@ -76,3 +78,7 @@ existing ones as default.
 ## `delete [key]`
 
 Delete the translations for a given key.
+
+## `validate`
+
+Check if messages are available for every single configured language.
