@@ -32,6 +32,8 @@
     "vuepress": "^0.14.2"
   },
   "dependencies": {
+    "@babel/preset-env": "^7.5.5",
+    "babel-core": "^6.26.3",
     "chalk": "^2.4.1",
     "execall": "^1.0.0",
     "glob": "^7.1.2",
@@ -41,6 +43,9 @@
     "lodash.uniq": "^4.5.0",
     "lodash.unset": "^4.5.2",
     "replace-string": "^1.1.0",
+    "vue": "^2.6.10",
+    "vue-eslint-parser": "^6.0.4",
+    "vue-template-compiler": "^2.6.10",
     "yargs": "^12.0.1"
   }
 }
