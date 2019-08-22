@@ -26,7 +26,7 @@ function TranslationManager (opts) {
 
 module.exports = TranslationManager
 
-module.exports.JSONAdapter = require('./adapter-json.js')
+module.exports.JSONAdapter = require('../adapter-json.js')
 
 /**
  * Get the languages configured
