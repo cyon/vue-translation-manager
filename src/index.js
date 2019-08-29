@@ -62,23 +62,6 @@ TranslationManager.prototype.getSrcPath = function () {
 }
 
 /**
- * Get the template part for a vue component
- * @param {string} path Path to the vue single file component, null if there is none
- * @returns {object}
- */
-TranslationManager.prototype.getTemplateForSingleFileComponent = function (path) {
-  const contents = fs.readFileSync(path, { encoding: 'utf8' })
-  const templateResult = /<template>([\w\W]*)<\/template>/g.exec(contents)
-
-  if (!templateResult) return null
-
-  let template = ''
-  if (templateResult && templateResult[1]) template = templateResult[1]
-
-  return { template: template, offset: templateResult[0].indexOf(templateResult[1]) + templateResult.index }
-}
-
-/**
  * Get all untranslated strings for a given vue component
  * @param {string} pathToComponent Path to the vue component
  */
