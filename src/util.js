@@ -3,7 +3,7 @@
  * @param {object} el Token element
  */
 function deleteParent (el) {
-  delete el.parent
+  delete el.parent.children
   delete el.loc
 }
 
@@ -60,7 +60,34 @@ function fixRange (el, code) {
   el.range[1] = el.range[1] - diffEnd
 }
 
+function mapToResult (el) {
+  let type
+  switch (el.type) {
+    case 'VText':
+      type = 'textNode'
+      break
+    case 'VLiteral':
+      type = 'attribute'
+      break
+    case 'Literal':
+      type = 'srcBlock'
+      break
+    default:
+      type = null
+  }
+
+  let result = {
+    type,
+    text: el.value,
+    range: el.range,
+    expressions: []
+  }
+
+  return result
+}
+
 module.exports.deleteParent = deleteParent
 module.exports.trimElement = trimElement
 module.exports.removeColons = removeColons
 module.exports.fixRange = fixRange
+module.exports.mapToResult = mapToResult
