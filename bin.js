@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+require('babel-core').transform('code', {})
+
 const fs = require('fs')
 const path = require('path')
 const glob = require('glob')
@@ -111,7 +113,7 @@ require('yargs') // eslint-disable-line
     manager.getLanguages().map((lang) => {
       questions.push({
         type: 'input',
-        message: `[${lang}] Translation for "${argv.key}"`,
+        message: `[${chalk.yellow(lang)}] Translation for "${argv.key}"`,
         name: lang,
         default: translations[lang] || ''
       })
@@ -169,6 +171,7 @@ function launchInteractiveTranslationPrompt (askKey) {
   }]).then(async (answers) => {
     var filePath = path.resolve(answers.file)
     var strings = manager.getStringsForComponent(filePath)
+    var fileContents = fs.readFileSync(filePath, { encoding: 'utf8' })
 
     var questions = []
     var replacements = []
@@ -177,7 +180,7 @@ function launchInteractiveTranslationPrompt (askKey) {
 
     for (var i = 0; i < strings.length; i++) {
       let str = strings[i]
-      var key = await manager.getSuggestedKey(filePath, str.string, usedKeys)
+      var key = await manager.getSuggestedKey(filePath, str.text, usedKeys)
       usedKeys.push(key)
 
       replacements.push({
@@ -197,31 +200,33 @@ function launchInteractiveTranslationPrompt (askKey) {
         })
       }
 
-      let textForDisplay = ''
-      let defaultString = ''
+      // let textForDisplay = ''
+      // let defaultString = ''
 
-      if (str.expressions) {
-        let i = 1
-        let lastIndex = 0
+      // if (str.expressions) {
+      //   let i = 1
+      //   let lastIndex = 0
 
-        str.expressions.map((expression) => {
-          textForDisplay += str.originalString.substring(lastIndex, expression.indexStart)
-          defaultString += str.originalString.substring(lastIndex, expression.indexStart)
-          lastIndex = expression.indexEnd + 2
-          textForDisplay += `${chalk.red(`{{${expression.expr}}}`)}${chalk.blue(`{${i}}`)}`
-          defaultString += `{${i}}`
+      //   str.expressions.map((expression) => {
+      //     textForDisplay += str.originalString.substring(lastIndex, expression.indexStart)
+      //     defaultString += str.originalString.substring(lastIndex, expression.indexStart)
+      //     lastIndex = expression.indexEnd + 2
+      //     textForDisplay += `${chalk.red(`{{${expression.expr}}}`)}${chalk.blue(`{${i}}`)}`
+      //     defaultString += `{${i}}`
 
-          i++
-        })
+      //     i++
+      //   })
 
-        textForDisplay += str.originalString.substring(lastIndex)
-        defaultString += str.originalString.substring(lastIndex)
-      }
+      //   textForDisplay += str.originalString.substring(lastIndex)
+      //   defaultString += str.originalString.substring(lastIndex)
+      // }
+      let textForDisplay = getFormattedCodeBlock(fileContents, str)
+      let defaultString = getDefaultString(str)
 
       manager.getLanguages().map((lang) => {
         questions.push({
           type: 'input',
-          message: `[${lang}] Translation for "${textForDisplay}"`,
+          message: `[${chalk.yellow(lang)}] Translation for: \n ${textForDisplay}`,
           name: `${replaceAll(key, '.', '/')}.${lang}`,
           default: defaultString
         })
@@ -272,4 +277,44 @@ function containsUntranslatedStrings (filePath) {
 function setUpManager () {
   let config = require(path.join(process.cwd(), '.vue-translation.js'))
   return new Manager(config)
+}
+
+function getFormattedCodeBlock (source, match) {
+  let before = source.substring(0, match.range[0])
+  let textBefore = before.substring(before.lastIndexOf('\n') + 1).trimStart()
+  let after = source.substring(match.range[1])
+  let textAfter = after.substring(0, after.indexOf('\n'))
+  let text = match.text
+
+  // replace expressions
+  let offset = 0
+
+  match.expressions.map((expr, i) => {
+    let paramStr = chalk.bgCyan(`{${i}}`)
+    text = text.substring(0, expr.range[0] + offset)
+      + chalk.blue(text.substring(expr.range[0] + offset, expr.range[1] + offset))
+      + paramStr
+      + text.substring(expr.range[1] + offset)
+
+    // 10 is the length of invisible characters used by chalk
+    offset += paramStr.length + 10
+  })
+
+  return chalk.gray(textBefore) + text + chalk.gray(textAfter)
+}
+
+function getDefaultString (match) {
+  let text = match.text
+  let offset = 0
+
+  match.expressions.map((expr, i) => {
+    let replacement = `{${i}}`
+    text = text.substring(0, expr.range[0] + offset)
+      + replacement
+      + text.substring(expr.range[1] + offset)
+
+    offset += replacement.length - expr.text.length
+  })
+
+  return text
 }
