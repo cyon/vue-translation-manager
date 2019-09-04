@@ -115,6 +115,7 @@ TranslationManager.prototype.getStringsForComponent = function (pathToComponent)
             let result = {
               type: 'textNode',
               text: fileContent.substring(elements[0].range[0], elements[elements.length - 1].range[1]),
+              range: [elements[0].range[0], elements[elements.length - 1].range[1]],
               expressions: elements
                 .map((el) => {
                   // mark as processed so it doesn't get picked up again
@@ -125,7 +126,7 @@ TranslationManager.prototype.getStringsForComponent = function (pathToComponent)
                 .map((el) => {
                   let expr = fileContent.substring(el.range[0], el.range[1])
                   return {
-                    range: el.range,
+                    range: [el.range[0] - elements[0].range[0], el.range[1] - elements[0].range[0]],
                     text: expr,
                     expr: expr.replace(/{{|}}/g, '').trim()
                   }
@@ -269,17 +270,17 @@ TranslationManager.prototype.replaceStringsInComponent = function (pathToCompone
       }
       translateFn = `{{ $t('${str.key}', { ${params.join(', ')} }) }}`
     }
-    var firstPart = contentsAfter.substring(0, offset + str.indexInFile)
-    var secondPart = contentsAfter.substring(offset + str.indexInFile + str.stringLength)
+    var firstPart = contentsAfter.substring(0, offset + str.range[0])
+    var secondPart = contentsAfter.substring(offset + str.range[0] + str.text.length)
 
-    if (str.where === 'attribute') {
+    if (str.type === 'attribute') {
       translateFn = `$t('${str.key}')`
       firstPart = firstPart.substring(0, firstPart.lastIndexOf(' ') + 1) + ':' + firstPart.substring(firstPart.lastIndexOf(' ') + 1)
       offset += 1
     }
 
     contentsAfter = `${firstPart}${translateFn}${secondPart}`
-    offset += (translateFn.length - str.stringLength)
+    offset += (translateFn.length - str.text.length)
   })
 
   fs.writeFileSync(pathToComponent, contentsAfter)
