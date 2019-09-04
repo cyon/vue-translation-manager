@@ -185,9 +185,9 @@ function launchInteractiveTranslationPrompt (askKey) {
 
       replacements.push({
         key: key,
-        where: str.where,
-        indexInFile: str.indexInFile,
-        stringLength: str.stringLength,
+        type: str.type,
+        range: str.range,
+        text: str.text,
         expressions: str.expressions
       })
 
