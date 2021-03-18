@@ -3,6 +3,7 @@ const path = require('path')
 const execall = require('execall')
 const glob = require('glob')
 const uniq = require('lodash.uniq')
+const camelCase = require('lodash.camelCase')
 
 /**
  * Initialize the translation manager
@@ -321,20 +322,6 @@ TranslationManager.prototype.validate = async function () {
     }
   })
   return missingKeys
-}
-
-/**
- * camelCase any string
- * @param {string} text The string to be camelCased
- * @returns {string} theStringInCamelCase
- */
-function camelCase (text) {
-  return text
-    .trim()
-    .split(' ')
-    .map((word) => word.toLowerCase())
-    .map((word, i) => (i === 0 ? word : word[0].toUpperCase() + word.substring(1)))
-    .join('')
 }
 
 function increaseTrailingNumber (str) {
