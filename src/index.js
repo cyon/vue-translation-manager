@@ -1,8 +1,15 @@
 const fs = require('fs')
 const path = require('path')
-const execall = require('execall')
 const glob = require('glob')
 const uniq = require('lodash.uniq')
+const { parse } = require('vue-eslint-parser')
+const {
+  deleteParent,
+  trimElement,
+  removeColons,
+  fixRange,
+  mapToResult
+} = require('./util')
 
 /**
  * Initialize the translation manager
@@ -22,11 +29,21 @@ function TranslationManager (opts) {
   this.rootPath = opts.root || process.cwd()
 
   this.adapter._setLanguages(this.languages)
+
+  this.allowedAttrs = [
+    'title',
+    'placeholder',
+    'label',
+    'text',
+    'caption',
+    'alt',
+    ...opts.attributes || []
+  ]
 }
 
 module.exports = TranslationManager
 
-module.exports.JSONAdapter = require('./adapter-json.js')
+module.exports.JSONAdapter = require('../adapter-json.js')
 
 /**
  * Get the languages configured
@@ -45,114 +62,194 @@ TranslationManager.prototype.getSrcPath = function () {
 }
 
 /**
- * Get the template part for a vue component
- * @param {string} path Path to the vue single file component, null if there is none
- * @returns {object}
- */
-TranslationManager.prototype.getTemplateForSingleFileComponent = function (path) {
-  const contents = fs.readFileSync(path, { encoding: 'utf8' })
-  const templateResult = /<template>([\w\W]*)<\/template>/g.exec(contents)
-
-  if (!templateResult) return null
-
-  let template = ''
-  if (templateResult && templateResult[1]) template = templateResult[1]
-
-  return { template: template, offset: templateResult[0].indexOf(templateResult[1]) + templateResult.index }
-}
-
-/**
  * Get all untranslated strings for a given vue component
  * @param {string} pathToComponent Path to the vue component
  */
 TranslationManager.prototype.getStringsForComponent = function (pathToComponent) {
-  var templateResult = this.getTemplateForSingleFileComponent(pathToComponent)
-  if (!templateResult) return []
+  let fileContent = fs.readFileSync(pathToComponent, { encoding: 'utf8' })
+  let elements = parse(fileContent, {
+    sourceType: 'module',
+    ecmaVersion: 2018,
+    allowImportExportEverywhere: true
+  }).templateBody.children
 
-  var templateOffset = templateResult.offset
-  var template = templateResult.template
+  let matches = []
 
-  var matches = execall(/>([^<>]*)</gm, template)
+  let handleEl = (el) => {
+    if (el.processed) return null
 
-  function extractTemplateExpression (text) {
-    const indexOfOpening = text.indexOf('{{')
-    const indexOfClosing = text.indexOf('}}')
-    if (indexOfClosing === -1 || indexOfOpening === -1) {
-      return {
-        expression: null,
-        text: text
+    if (el.type === 'VLiteral') {
+      if (el.parent.type !== 'VAttribute') return el
+      if (!this.allowedAttrs.includes(el.parent.key.name)) return el
+    }
+
+    if (el.type === 'VText') {
+      if (el.parent && el.parent.children) {
+        let index = el.parent.children.findIndex((child) => child === el)
+
+        if (el.parent.children.length > (index + 1)) {
+          let elements = [el]
+          let i = index + 1
+          while (el.parent.children[i]) {
+            let child = el.parent.children[i]
+            if (!['VExpressionContainer', 'VText'].includes(child.type)) break
+
+            elements.push(child)
+            i++
+          }
+
+          // sort out VExpressionContainer elements from the back
+          // ...and whitespace
+          let caughtTail = false
+          elements = elements.reverse().filter((e) => {
+            if (caughtTail) return true
+            if (e.type !== 'VText') return false
+
+            if (e.value.trim() === '') return false
+
+            caughtTail = true
+            return true
+          }).reverse()
+
+          if (elements.length > 1) {
+            let result = {
+              type: 'textNode',
+              text: fileContent.substring(elements[0].range[0], elements[elements.length - 1].range[1]),
+              range: [elements[0].range[0], elements[elements.length - 1].range[1]],
+              expressions: elements
+                .map((el) => {
+                  // mark as processed so it doesn't get picked up again
+                  el.processed = true
+                  return el
+                })
+                .filter((el) => el.type !== 'VText')
+                .map((el) => {
+                  let expr = fileContent.substring(el.range[0], el.range[1])
+                  return {
+                    range: [el.range[0] - elements[0].range[0], el.range[1] - elements[0].range[0]],
+                    text: expr,
+                    expr: expr.replace(/{{|}}/g, '').trim()
+                  }
+                })
+            }
+            matches.push(result)
+            return null
+          }
+        }
       }
     }
-    return {
-      index: indexOfOpening,
-      indexClosing: indexOfClosing,
-      expression: text.substring(indexOfOpening + 2, indexOfClosing).trim(),
-      text: '' + text.substring(0, indexOfOpening) + text.substring(indexOfClosing + 2)
-    }
+
+    deleteParent(el)
+    trimElement(el)
+    removeColons(el)
+    fixRange(el, fileContent)
+
+    matches.push(mapToResult(el))
+
+    return null
   }
 
-  function checkTemplateExpression (text) {
-    let currText = text
-    let expression = true
-    let expressions = []
-    let currentOffset = 0
+  let types = ['String', 'HTMLText', 'VText', 'Literal', 'VLiteral']
+  JSON.stringify(elements, (key, value) => {
+    if (key === 'parent') return null
+    if (!value || !value.type) return value
+    if (!types.includes(value.type)) return value
 
-    while (expression !== null) {
-      let result = extractTemplateExpression(currText)
-      currText = result.text
-      expression = result.expression
-      if (expression !== null) {
-        expressions.push({
-          expr: expression,
-          indexStart: currentOffset + result.index,
-          indexEnd: currentOffset + result.indexClosing
-        })
-        currentOffset += (result.indexClosing - result.index) + 2
-      }
-    }
-    return {
-      staticText: currText.trim(),
-      hasStaticText: currText.trim().length > 0,
-      expressions
-    }
-  }
+    if (value.value.trim().length < 3) return value
+    handleEl(value)
 
-  var textNodeMatches = matches.map((match) => {
-    let expressionsInfo = checkTemplateExpression(match.sub[0])
-    if (!expressionsInfo.hasStaticText) return
-    if (expressionsInfo.staticText.length < 3) return
-    return {
-      indexInTemplate: match.index + 1,
-      indexInFile: templateOffset + match.index + 1,
-      originalString: match.sub[0],
-      string: expressionsInfo.staticText,
-      stringLength: match.sub[0].length,
-      expressions: expressionsInfo.expressions,
-      where: 'textNode'
-    }
-  }).filter(Boolean)
-
-  var attributeResults = execall(/\s([a-z]*-)?(title|label|text|caption|placeholder)="([^"]*)"/gm, template)
-
-  var attributeMatches = attributeResults.map((match) => {
-    if (!match.sub[2] || match.sub[2].trim() === '') return
-
-    return {
-      indexInTemplate: match.index + match.match.indexOf(match.sub[2]),
-      indexInFile: templateOffset + match.index + match.match.indexOf(match.sub[2]),
-      originalString: match.sub[2].trim(),
-      string: match.sub[2].trim(),
-      stringLength: match.sub[2].length,
-      expressions: [],
-      where: 'attribute'
-    }
-  }).filter(Boolean)
-
-  return textNodeMatches.concat(...attributeMatches).sort((a, b) => {
-    if (a.indexInFile < b.indexInFile) return -1
-    if (a.indexInFile > b.indexInFile) return 1
-    return 0
+    return value
   })
+
+  return matches
+
+  // var templateResult = this.getTemplateForSingleFileComponent(pathToComponent)
+  // if (!templateResult) return []
+
+  // var templateOffset = templateResult.offset
+  // var template = templateResult.template
+
+  // var matches = execall(/>([^<>]*)</gm, template)
+
+  // function extractTemplateExpression (text) {
+  //   const indexOfOpening = text.indexOf('{{')
+  //   const indexOfClosing = text.indexOf('}}')
+  //   if (indexOfClosing === -1 || indexOfOpening === -1) {
+  //     return {
+  //       expression: null,
+  //       text: text
+  //     }
+  //   }
+  //   return {
+  //     index: indexOfOpening,
+  //     indexClosing: indexOfClosing,
+  //     expression: text.substring(indexOfOpening + 2, indexOfClosing).trim(),
+  //     text: '' + text.substring(0, indexOfOpening) + text.substring(indexOfClosing + 2)
+  //   }
+  // }
+
+  // function checkTemplateExpression (text) {
+  //   let currText = text
+  //   let expression = true
+  //   let expressions = []
+  //   let currentOffset = 0
+
+  //   while (expression !== null) {
+  //     let result = extractTemplateExpression(currText)
+  //     currText = result.text
+  //     expression = result.expression
+  //     if (expression !== null) {
+  //       expressions.push({
+  //         expr: expression,
+  //         indexStart: currentOffset + result.index,
+  //         indexEnd: currentOffset + result.indexClosing
+  //       })
+  //       currentOffset += (result.indexClosing - result.index) + 2
+  //     }
+  //   }
+  //   return {
+  //     staticText: currText.trim(),
+  //     hasStaticText: currText.trim().length > 0,
+  //     expressions
+  //   }
+  // }
+
+  // var textNodeMatches = matches.map((match) => {
+  //   let expressionsInfo = checkTemplateExpression(match.sub[0])
+  //   if (!expressionsInfo.hasStaticText) return
+  //   if (expressionsInfo.staticText.length < 3) return
+  //   return {
+  //     indexInTemplate: match.index + 1,
+  //     indexInFile: templateOffset + match.index + 1,
+  //     originalString: match.sub[0],
+  //     string: expressionsInfo.staticText,
+  //     stringLength: match.sub[0].length,
+  //     expressions: expressionsInfo.expressions,
+  //     where: 'textNode'
+  //   }
+  // }).filter(Boolean)
+
+  // var attributeResults = execall(/\s([a-z]*-)?(title|label|text|caption|placeholder)="([^"]*)"/gm, template)
+
+  // var attributeMatches = attributeResults.map((match) => {
+  //   if (!match.sub[2] || match.sub[2].trim() === '') return
+
+  //   return {
+  //     indexInTemplate: match.index + match.match.indexOf(match.sub[2]),
+  //     indexInFile: templateOffset + match.index + match.match.indexOf(match.sub[2]),
+  //     originalString: match.sub[2].trim(),
+  //     string: match.sub[2].trim(),
+  //     stringLength: match.sub[2].length,
+  //     expressions: [],
+  //     where: 'attribute'
+  //   }
+  // }).filter(Boolean)
+
+  // return textNodeMatches.concat(...attributeMatches).sort((a, b) => {
+  //   if (a.indexInFile < b.indexInFile) return -1
+  //   if (a.indexInFile > b.indexInFile) return 1
+  //   return 0
+  // })
 }
 
 /**
@@ -173,17 +270,17 @@ TranslationManager.prototype.replaceStringsInComponent = function (pathToCompone
       }
       translateFn = `{{ $t('${str.key}', { ${params.join(', ')} }) }}`
     }
-    var firstPart = contentsAfter.substring(0, offset + str.indexInFile)
-    var secondPart = contentsAfter.substring(offset + str.indexInFile + str.stringLength)
+    var firstPart = contentsAfter.substring(0, offset + str.range[0])
+    var secondPart = contentsAfter.substring(offset + str.range[0] + str.text.length)
 
-    if (str.where === 'attribute') {
+    if (str.type === 'attribute') {
       translateFn = `$t('${str.key}')`
       firstPart = firstPart.substring(0, firstPart.lastIndexOf(' ') + 1) + ':' + firstPart.substring(firstPart.lastIndexOf(' ') + 1)
       offset += 1
     }
 
     contentsAfter = `${firstPart}${translateFn}${secondPart}`
-    offset += (translateFn.length - str.stringLength)
+    offset += (translateFn.length - str.text.length)
   })
 
   fs.writeFileSync(pathToComponent, contentsAfter)

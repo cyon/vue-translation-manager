@@ -15,6 +15,7 @@ module.exports = {
       '/configuration',
       '/json-adapter',
       '/cli-usage',
+      '/how-does-it-work',
       '/writing-new-adapters'
     ]
   }
