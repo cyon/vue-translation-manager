@@ -68,6 +68,10 @@ test('getSuggestedKey', async function (t) {
   var key2 = await m.getSuggestedKey(pathToFile2, 'Little text here with a lot of words that hopefully won\'t appear in the key')
   t.equal(key2, 'header.titlebar.littleTextHere', 'key is correct')
 
+  var pathToFile3 = path.join(__dirname, 'data/test-1/src/components/header/Titlebar.vue')
+  var key3 = await m.getSuggestedKey(pathToFile3, 'One / three')
+  t.equal(key3, 'header.titlebar.oneThree', 'key is correct')
+
   cleanupTmp()
   t.end()
 })
@@ -91,6 +95,9 @@ test('getSuggestedKey with list of used keys', async function (t) {
 
   var keyThree = await m.getSuggestedKey(pathToFile, 'Create Group and a lot of text that stays the same Three', ['test.createGroupAnd'])
   t.equal(keyThree, 'test.createGroupAnd1', 'key is correct')
+
+  var keyFour = await m.getSuggestedKey(pathToFile, 'One / three and a lot of text that stays the same', ['test.oneThree'])
+  t.equal(keyFour, 'test.oneThree1', 'key is correct')
 
   cleanupTmp()
   t.end()
