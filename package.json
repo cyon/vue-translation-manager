@@ -29,7 +29,7 @@
     "standard": "^11.0.1",
     "tap-spec": "^5.0.0",
     "tape": "^4.9.1",
-    "vuepress": "^0.14.2"
+    "vuepress": "^1.9.7"
   },
   "dependencies": {
     "chalk": "^2.4.1",
